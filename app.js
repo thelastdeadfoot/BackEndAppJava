@@ -4,11 +4,19 @@ const fs = require('fs');
 const multer = require('multer');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Middlewares pour parser le corps des requêtes
+// Middlewares pour parser le corps sdes requêtes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+    res.send("Hello depuis Railway !");
+});
+
+app.listen(PORT, () => {
+    console.log(`Serveur démarré sur le port ${PORT}`);
+});
 
 // Configuration de multer
 const storage = multer.diskStorage({
