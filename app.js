@@ -206,5 +206,5 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 
 // Lancer le serveur
 app.listen(port, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
+    console.log(`Serveur démarré sur le port ${port}`);
 });
