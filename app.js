@@ -14,10 +14,6 @@ app.get("/", (req, res) => {
     res.send("Hello depuis Railway !");
 });
 
-app.listen(PORT, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
-});
-
 // Configuration de multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -210,5 +206,5 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 
 // Lancer le serveur
 app.listen(port, () => {
-    console.log(`Serveur démarré sur http://localhost:${port}`);
+    console.log(`Serveur démarré sur le port ${PORT}`);
 });
