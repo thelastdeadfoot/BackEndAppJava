@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css" type="text/css">
+    <title>Téléchargement de fichier</title>
+</head>
+<body>
+  <!-- Bulle d'erreur -->
+  <div class="error-message" id="errorMessage"></div>
+
+  <!-- Liste des fichiers uploadés -->
+  <div class="file-list-container" id="fileList">
+      <!-- Les fichiers seront chargés ici par JavaScript -->
+  </div>
+
+  <!-- Formulaire de création de dossier -->
+  <form id="createFolderForm">
+      <input type="text" id="folderName" placeholder="Nom du dossier" required />
+      <button idtype="submit">Créer Dossier</button> <!-- Bouton pour créer le dossier -->
+  </form>
+
+  <!-- Formulaire d'upload toujours en bas de la page -->
+  <form id="uploadForm">
+      <input type="file" name="file" id="fileInput" required />
+      <button type="submit">Télécharger</button>
+  </form>
+
+  <script>
+      // Fonction pour afficher un message d'erreur dans une bulle au centre
+      function displayError(message) {
+          const errorMessage = document.getElementById('errorMessage');
+          errorMessage.textContent = message;
+          errorMessage.style.display = 'block';
+          setTimeout(() => {
+              errorMessage.style.display = 'none'; // Cache le message après 3 secondes
+          }, 3000);
+      }
+
+      // Fonction pour récupérer et afficher tous les fichiers uploadés
+      function loadFiles() {
+    fetch('/api/files')
+        .then(response => response.json())
+        .then(files => {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';  // Vider la liste actuelle
+
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.classList.add('file-item');
+
+                // Si c'est un dossier, créer un lien pour y accéder
+                if (file.isDirectory) {
+                    const folderLink = document.createElement('a');
+                    folderLink.href = `/${file.name}`;  // Redirection vers l'URL du dossier
+                    folderLink.textContent = file.name;  // Afficher le nom du dossier
+                    fileItem.appendChild(folderLink);
+                } else {
+                    // Créer un lien de téléchargement pour chaque fichier
+                    const fileLink = document.createElement('a');
+                    fileLink.href = `/uploads/${file}`;
+                    fileLink.download = file;  // Permet le téléchargement
+                    fileLink.style.textDecoration = 'none';
+                    fileLink.style.color = 'inherit';
+
+                    const filePreview = document.createElement('div');
+                    filePreview.classList.add('file-preview');
+
+                    if (file.match(/\.(jpeg|jpg|gif|png)$/)) {
+                        const img = document.createElement('img');
+                        img.src = `/uploads/${file}`;
+                        img.alt = file;
+                        filePreview.appendChild(img);
+                    } else {
+                        const initial = document.createElement('span');
+                        initial.textContent = file.charAt(0).toUpperCase();
+                        filePreview.appendChild(initial);
+                    }
+
+                    const fileName = document.createElement('div');
+                    fileName.classList.add('file-name');
+                    fileName.textContent = file;
+
+                    // Ajouter le lien autour de l'aperçu et du nom du fichier
+                    fileLink.appendChild(filePreview);
+                    fileLink.appendChild(fileName);
+                    fileItem.appendChild(fileLink);
+                }
+                fileList.appendChild(fileItem);
+            });
+        })
+        .catch(err => console.error('Erreur lors du chargement des fichiers :', err));
+}
+
+
+      // Événement lors de l'envoi du formulaire de téléchargement de fichier
+      const uploadForm = document.getElementById('uploadForm');
+    uploadForm.addEventListener('submit', function (event) {
+    event.preventDefault(); // Empêche le rechargement de la page
+
+    const fileInput = document.getElementById('fileInput');
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    // Ajouter le nom du dossier dans lequel on se trouve
+    const folderPath = window.location.pathname.substring(1); // Chemin du dossier actuel
+    formData.append('folderName', folderPath); // On ajoute le chemin du dossier au FormData
+
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            console.error('Erreur:', data.error);
+        } else {
+            console.log('Upload réussi:', data.message);
+            // Recharger les fichiers du dossier après l'upload
+            loadFiles(folderPath);
+        }
+    })
+    .catch(err => console.error('Erreur lors de l\'upload:', err));
+});
+
+      // Événement lors de l'envoi du formulaire de création de dossier
+      const createFolderForm = document.getElementById('createFolderForm');
+      createFolderForm.addEventListener('submit', function (event) {
+          event.preventDefault(); // Empêche le rechargement de la page
+
+          const folderName = document.getElementById('folderName').value;
+
+          fetch('/api/create-folder', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ folderName: folderName })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.error) {
+                  displayError(data.error); // Affiche l'erreur si elle existe
+              } else {
+                  alert('Dossier créé avec succès');
+              }
+          })
+          .catch(err => displayError('Erreur lors de la création du dossier.'));
+      });
+
+      // Charger les fichiers au chargement de la page
+      window.onload = () => loadFiles('');
+  </script>
+</body>
+</html>

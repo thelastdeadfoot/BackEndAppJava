@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css" type="text/css">
+    <title>Téléchargement de fichier</title>
+</head>
+<body>
+  <!-- Bulle d'erreur -->
+  <div class="error-message" id="errorMessage"></div>
+
+  <!-- Liste des fichiers uploadés -->
+  <div class="file-list-container" id="fileList">
+      <!-- Les fichiers seront chargés ici par JavaScript -->
+  </div>
+
+  <!-- Formulaire de création de dossier -->
+  <form id="createFolderForm">
+      <input type="text" id="folderName" placeholder="Nom du dossier" required />
+      <button idtype="submit">Créer Dossier</button> <!-- Bouton pour créer le dossier -->
+  </form>
+
+<!-- Formulaire d'upload -->
+<form id="uploadForm">
+    <input type="file" name="file" id="fileInput" required />
+    <!-- Champ de texte pour saisir le chemin du dossier -->
+    <input type="text" id="folderPathInput" placeholder="Chemin du dossier sur le serveur" required />
+    <button type="submit">Télécharger</button>
+</form>
+<input type="text" id="folderPathInput" placeholder="Chemin du dossier (ex: 'dude/subfolder')" required />
+
+
+<script>
+    function displayError(message) {
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+            errorMessage.style.display = 'none';
+        }, 3000);
+    }
+
+    // Obtenir le chemin du dossier actuel
+    const folderPath = window.location.pathname.substring(1);
+
+    function loadFiles() {
+    const folderPath = decodeURIComponent(window.location.pathname.substring(1));
+    const apiUrl = folderPath ? `/api/files/${encodeURIComponent(folderPath)}` : '/api/files';
+
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(files => {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+
+            if (files.error) {
+                displayError(files.error);
+                return;
+            }
+
+            if (files.length === 0) {
+                fileList.innerHTML = '<div>Aucun fichier ou dossier disponible.</div>';
+                return;
+            }
+
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.classList.add('file-item');
+
+                const link = document.createElement('a');
+                link.style.textDecoration = 'none';
+                link.style.color = 'inherit';
+
+                const filePreview = document.createElement('div');
+                filePreview.classList.add('file-preview');
+
+                const fileName = document.createElement('div');
+                fileName.classList.add('file-name');
+                fileName.textContent = file.name;
+
+                if (file.isDirectory) {
+                    // Lien vers le sous-dossier
+                    const newPath = folderPath ? `${folderPath}/${file.name}` : file.name;
+                    link.href = `/${encodeURIComponent(newPath)}`;
+                    const folderIcon = document.createElement('span');
+                    folderIcon.textContent = '📁';
+                    filePreview.appendChild(folderIcon);
+                } else {
+                    // Lien pour télécharger ou visualiser le fichier
+                    const fileUrl = folderPath ? `/uploads/${encodeURIComponent(folderPath)}/${encodeURIComponent(file.name)}` : `/uploads/${encodeURIComponent(file.name)}`;
+                    link.href = fileUrl;
+                    const fileExtension = file.name.split('.').pop().toLowerCase();
+
+                    if (['jpeg', 'jpg', 'gif', 'png'].includes(fileExtension)) {
+                        const img = document.createElement('img');
+                        img.src = fileUrl;
+                        img.alt = file.name;
+                        img.style.width = '50px';
+                        img.style.height = '50px';
+                        filePreview.appendChild(img);
+                    } else {
+                        const fileIcon = document.createElement('span');
+                        fileIcon.textContent = '📄';
+                        filePreview.appendChild(fileIcon);
+                    }
+                }
+
+                link.appendChild(filePreview);
+                link.appendChild(fileName);
+                fileItem.appendChild(link);
+                fileList.appendChild(fileItem);
+            });
+        })
+        .catch(err => console.error('Erreur lors du chargement des fichiers :', err));
+}
+
+// Gestion du formulaire d'upload
+const uploadForm = document.getElementById('uploadForm');
+        uploadForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const fileInput = document.getElementById('fileInput');
+            const folderPathInput = document.getElementById('folderPathInput');
+            const folderPath = folderPathInput.value.trim();
+
+            // Vérifier qu'un fichier est sélectionné
+            if (fileInput.files.length === 0) {
+                displayError('Veuillez sélectionner un fichier à télécharger.');
+                return;
+            }
+
+            // Vérifier que le chemin du dossier est fourni
+            if (!folderPath) {
+                displayError('Veuillez saisir le chemin du dossier de destination.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            // Passer 'folderPath' en paramètre de requête
+            fetch(`/upload?folderPath=${encodeURIComponent(folderPath)}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    displayError(data.error);
+                } else {
+                    console.log('Upload réussi:', data.message);
+                    loadFiles(); // Recharger les fichiers pour mettre à jour la liste
+                    // Réinitialiser le formulaire
+                    uploadForm.reset();
+                }
+            })
+            .catch(err => {
+                console.error('Erreur lors de l\'upload:', err);
+                displayError('Une erreur est survenue lors du téléchargement du fichier.');
+            });
+        });
+
+
+    // Gestion du formulaire de création de dossier
+const createFolderForm = document.getElementById('createFolderForm');
+createFolderForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const folderNameInput = document.getElementById('folderName');
+    const newFolderName = folderNameInput.value.trim();
+    if (!newFolderName) {
+        displayError('Veuillez entrer un nom de dossier valide.');
+        return;
+    }
+
+    const fullPath = folderPath ? `${folderPath}/${newFolderName}` : newFolderName;
+
+    fetch('/api/create-folder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ folderName: fullPath })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            displayError(data.error);
+        } else {
+            console.log('Dossier créé avec succès');
+            loadFiles();
+        }
+    })
+    .catch(err => displayError('Erreur lors de la création du dossier.'));
+});
+
+    // Charger les fichiers au chargement de la page
+    window.onload = () => loadFiles();
+</script>
+</body>
+</html>
