@@ -4,15 +4,11 @@ const fs = require('fs');
 const multer = require('multer');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-// Middlewares pour parser le corps sdes requêtes
+// Middlewares pour parser le corps des requêtes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.get("/", (req, res) => {
-    res.send("Hello depuis Railway !");
-});
 
 // Configuration de multer
 const storage = multer.diskStorage({
@@ -52,47 +48,7 @@ const upload = multer({ storage: storage });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Route POST pour uploader un fichier
-app.post('/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'Aucun fichier uploadé' });
-    }
-
-    res.status(200).json({ message: 'Fichier uploadé avec succès', file: req.file });
-});
-
-// Pour supprimer un fichier
-app.delete('/api/files', (req, res) => {
-    const { folderPath, fileName } = req.body;
-
-    // Vérifier que les paramètres sont fournis
-    if (!folderPath || !fileName) {
-        return res.status(400).json({ error: 'Le chemin du dossier et le nom du fichier sont requis.' });
-    }
-
-    // Sécuriser le chemin du dossier
-    const safeFolderPath = path.normalize(folderPath).replace(/^(\.\.(\/|\\|$))+/, '');
-    const fullFolderPath = path.join(__dirname, 'uploads', safeFolderPath);
-
-    // Construire le chemin complet du fichier
-    const filePath = path.join(fullFolderPath, fileName);
-
-    // Vérifier que le fichier existe
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: 'Fichier non trouvé.' });
-    }
-
-    // Supprimer le fichier
-    fs.unlink(filePath, (err) => {
-        if (err) {
-            console.error('Erreur lors de la suppression du fichier :', err);
-            return res.status(500).json({ error: 'Erreur lors de la suppression du fichier.' });
-        }
-
-        console.log('Fichier supprimé avec succès :', filePath);
-        res.status(200).json({ message: 'Fichier supprimé avec succès.' });
-    });
-});
+// Routes API
 
 // Route API pour obtenir les fichiers et dossiers à la racine
 app.get('/api/files', (req, res) => {
@@ -136,7 +92,16 @@ app.get('/api/files/*', (req, res) => {
     });
 });
 
-// Route API pour obtenir la liste de tous les dossiers
+// Route POST pour uploader un fichier
+app.post('/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier uploadé' });
+    }
+
+    res.status(200).json({ message: 'Fichier uploadé avec succès', file: req.file });
+});
+
+// Route API pour obtenir la liste de tous les dossiers (récursivement)
 app.get('/api/folders', (req, res) => {
     const uploadsPath = path.join(__dirname, 'uploads');
 
@@ -206,5 +171,5 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 
 // Lancer le serveur
 app.listen(port, () => {
-    console.log(`Serveur démarré sur le port ${port}`);
+    console.log(`Serveur démarré sur http://localhost:${port}`);
 });
